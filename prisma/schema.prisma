@@ -1,0 +1,416 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../dev.sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
+
+
+
+model account {
+  @@map(name: "accounts")
+  @@index(fields: [userId])
+  @@index(fields: [resellerId])
+  @@index(fields: [companyId])
+
+  id Int @default(autoincrement()) @id
+  type String
+  discount Int @default(0)
+  lastSeen DateTime?
+  createdAt DateTime
+  updatedAt DateTime
+
+  notifications notification[] @relation("notifications")
+
+  currentAccountUser user? @relation("currentAccount")
+
+  userId Int
+  user user @relation(fields: [userId], references: [id])
+
+  resellerId Int?
+  reseller company? @relation("reseller", fields: [resellerId], references: [id])
+
+  companyId Int?
+  company company? @relation("staff", fields: [companyId], references: [id])
+
+  ownedCompany company? @relation("owner")
+
+  carts cart[] @relation("account-carts")
+
+  orders order[] @relation("account-orders")
+
+  regimens regimen[] @relation("account-regimens")
+}
+
+model cart {
+  @@map(name: "carts")
+  @@index(fields: [accountId])
+  @@index(fields: [companyId])
+
+  id Int @default(autoincrement()) @id
+  status String
+
+  shippingName String?
+  shippingCompany String?
+  shippingStreet1 String?
+  shippingStreet2 String?
+  shippingCity String?
+  shippingState String?
+  shippingZip String?
+  shippingCountry String?
+
+  billingSame Boolean @default(true)
+
+  billingName String?
+  billingCompany String?
+  billingStreet1 String?
+  billingStreet2 String?
+  billingCity String?
+  billingState String?
+  billingZip String?
+  billingCountry String?
+
+  deliveryMethodId Int?
+  deliveryMethod deliveryMethod? @relation(fields: [deliveryMethodId], references: [id])
+
+  createdAt DateTime
+  updatedAt DateTime
+
+  cartItems cartItem[]
+
+  accountId Int?
+  account account? @relation("account-carts", fields: [accountId], references: [id])
+
+  companyId Int?
+  company company? @relation("company-carts", fields: [companyId], references: [id])
+}
+
+model cartItem {
+  @@map(name: "cartItems")
+  @@unique(fields: [cartId, productVariantId])
+
+  id Int @default(autoincrement()) @id
+  sort Int
+  quantity Int
+
+  cartId Int
+  cart cart @relation(fields: [cartId], references: [id])
+
+  productVariantId Int
+  productVariant productVariant @relation(fields: [productVariantId], references: [id])
+}
+
+model certification {
+  @@map(name: "certifications")
+  @@index(fields: [companyId])
+
+  id Int @default(autoincrement()) @id
+  createdAt DateTime
+
+  fileId String?
+  file file? @relation(fields: [fileId], references: [id])
+
+  companyId Int
+  company company @relation("company-certifications", fields: [companyId], references: [id])
+}
+
+model company {
+  @@map(name: "companies")
+
+  id Int @default(autoincrement()) @id
+  name String
+  type String
+  isApproved Boolean @default(false)
+  discount Int @default(0)
+  paymentStreet1 String?
+  paymentStreet2 String?
+  paymentCity String?
+  paymentState String?
+  paymentZip String?
+  paymentCountry String?
+  createdAt DateTime
+  updatedAt DateTime
+
+  ownerId Int @unique
+  owner account @relation("owner", fields: [ownerId], references: [id])
+
+  certifications certification[] @relation("company-certifications")
+
+  customers account[] @relation("reseller")
+  staff account[] @relation("staff")
+  carts cart[] @relation("company-carts")
+  orders order[] @relation("company-orders")
+}
+
+model credential {
+  @@map(name: "credentials")
+  @@index(fields: [userId])
+
+  id Int @default(autoincrement()) @id
+  resetCode String? @unique
+  passwordHash String?
+  createdAt DateTime
+  updatedAt DateTime
+
+  userId Int @unique
+  user user @relation(fields: [userId], references: [id])
+}
+
+model deliveryMethod {
+  @@map(name: "deliveryMethods")
+
+  id Int @default(autoincrement()) @id
+  title String
+  price Int
+  isObsolete Boolean @default(false)
+
+  carts cart[]
+  orders order[]
+}
+
+model file {
+  @@map(name: "files")
+
+  id String @id
+  sha256 String
+  uploadedFilename String
+  size Int
+  mimeType String
+  ext String
+  createdAt DateTime
+
+  certification certification?
+  product product?
+  productVariant productVariant?
+}
+
+model notification {
+  @@map(name: "notifications")
+  @@index(fields: [accountId])
+
+  id Int @default(autoincrement()) @id
+  slug String?
+  message String
+  isDismissed Boolean @default(false)
+  dismissible Boolean @default(true)
+  type String @default("info")
+  action String?
+  createdAt DateTime
+
+  accountId Int
+  account account @relation("notifications", fields: [accountId], references: [id])
+}
+
+model order {
+  @@map(name: "orders")
+  @@index(fields: [type, accountId])
+  @@index(fields: [type, companyId])
+
+  id Int @default(autoincrement()) @id
+  type String
+  status String
+  orderItems orderItem[]
+
+  billingName String
+  billingCompany String?
+  billingStreet1 String
+  billingStreet2 String?
+  billingCity String
+  billingState String
+  billingZip String
+  billingCountry String
+
+  shippingName String
+  shippingCompany String?
+  shippingStreet1 String
+  shippingStreet2 String?
+  shippingCity String
+  shippingState String
+  shippingZip String
+  shippingCountry String
+
+  deliveryMethodId Int
+  deliveryMethod deliveryMethod @relation(fields: [deliveryMethodId], references: [id])
+  deliveryPrice Int
+
+  paymentToken String
+  paymentCardType String
+  paymentCardNumber String
+  paymentCardName String
+
+  createdAt DateTime
+  updatedAt DateTime
+
+  regimenId Int?
+  regimen regimen? @relation("regimen-orders", fields: [regimenId], references: [id])
+
+  accountId Int?
+  account account? @relation("account-orders", fields: [accountId], references: [id])
+
+  companyId Int?
+  company company? @relation("company-orders", fields: [companyId], references: [id])
+}
+
+model orderItem {
+  @@map(name: "orderItems")
+  @@index(fields: [orderId])
+
+  id Int @default(autoincrement()) @id
+  sort Int
+  quantity Int
+  retailPrice Int
+  discount Int
+  yourPrice Int
+
+  orderId Int
+  order order @relation(fields: [orderId], references: [id])
+
+  productVariantId Int
+  productVariant productVariant @relation(fields: [productVariantId], references: [id])
+}
+
+model product {
+  @@map(name: "products")
+
+  id Int @default(autoincrement()) @id
+  type String
+  title String
+  vendor String?
+  description String?
+  ingredients String?
+  createdAt DateTime
+  updatedAt DateTime
+
+  fileId String?
+  file file? @relation(fields: [fileId], references: [id])
+
+  productOptions productOption[]
+
+  productVariants productVariant[]
+}
+
+model productOption {
+  @@map(name: "productOptions")
+  @@index(fields: [productId])
+
+  id Int @default(autoincrement()) @id
+  title String
+
+  productId Int
+  product product @relation(fields: [productId], references: [id])
+
+  productOptionValues productOptionValue[]
+}
+
+model productOptionValue {
+  @@map(name: "productOptionValues")
+  @@index(fields: [productOptionId])
+  @@index(fields: [productVariantId])
+
+  id Int @default(autoincrement()) @id
+  value String
+
+  productOptionId Int
+  productOption productOption @relation(fields: [productOptionId], references: [id])
+
+  productVariantId Int
+  productVariant productVariant @relation(fields: [productVariantId], references: [id])
+}
+
+model productVariant {
+  @@map(name: "productVariants")
+  @@index(fields: [productId])
+
+  id Int @default(autoincrement()) @id
+  sku String
+  retailPrice Int
+  createdAt DateTime
+  updatedAt DateTime
+
+  fileId String?
+  file file? @relation(fields: [fileId], references: [id])
+
+  productId Int
+  product product @relation(fields: [productId], references: [id])
+
+  productOptionValues productOptionValue[]
+
+  cartItems cartItem[]
+  orderItems orderItem[]
+  regimenItems regimenItem[]
+}
+
+model regimen {
+  @@map(name: "regimens")
+  @@index(fields: [accountId])
+
+  id Int @default(autoincrement()) @id
+  status String
+  message String?
+  createdAt DateTime
+  updatedAt DateTime
+
+  regimenItems regimenItem[]
+
+  accountId Int
+  account account @relation("account-regimens", fields: [accountId], references: [id])
+
+  orders order[] @relation("regimen-orders")
+}
+
+model regimenItem {
+  @@map(name: "regimenItems")
+  @@index(fields: [regimenId])
+
+  id Int @default(autoincrement()) @id
+  sort Int
+  quantity Int
+  dosage String?
+  notes String?
+
+  regimenId Int
+  regimen regimen @relation(fields: [regimenId], references: [id])
+
+  productVariantId Int
+  productVariant productVariant @relation(fields: [productVariantId], references: [id])
+}
+
+model session {
+  @@map(name: "sessions")
+
+  id Int @default(autoincrement()) @id
+  token String @unique
+  userId Int
+  createdAt DateTime
+
+  user user @relation(fields: [userId], references: [id])
+}
+
+model user {
+  @@map(name: "users")
+
+  id Int @default(autoincrement()) @id
+  firstName String
+  lastName String
+  email String @unique
+  mobile String?
+  createdAt DateTime
+  updatedAt DateTime
+
+  currentAccountId Int?
+  currentAccount account? @relation("currentAccount", fields: [currentAccountId], references: [id])
+
+  accounts account[]
+
+  sessions session[]
+
+  credentials credential?
+}
